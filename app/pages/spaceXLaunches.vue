@@ -1,0 +1,221 @@
+<template>
+  <v-container>
+    <h2>
+      <v-icon icon="mdi-rocket" />
+      SpaceX Launches
+    </h2>
+
+    <!-- Filter and Sort Controls -->
+    <v-row class="mb-4" align="center">
+      <v-col cols="12" sm="6" md="4">
+        <v-select
+          v-model="selectedYear"
+          :items="years"
+          label="Filter by Year"
+          clearable
+          item-title="label"
+          item-value="value"
+        />
+      </v-col>
+      <v-col cols="12" sm="6" md="4">
+        <v-select
+          v-model="sortOrder"
+          :items="sortOptions"
+          label="Sort by Launch Date"
+          item-title="label"
+          item-value="value"
+        />
+      </v-col>
+    </v-row>
+
+    <!-- Card grid for launches -->
+    <v-row>
+      <v-col
+        v-for="launch in sortedLaunches"
+        :key="launch.id"
+        cols="12"
+        sm="6"
+        md="4"
+      >
+        <!-- Card for each launch -->
+        <v-card
+          class="mb-4"
+          @click="selectLaunch(launch)"
+          hover
+          elevation="3"
+          style="cursor: pointer;"
+        >
+          <v-card-title>{{ launch.mission_name }}</v-card-title>
+          <v-card-subtitle>
+            {{ formatDate(launch.launch_date_utc) }}
+          </v-card-subtitle>
+          <v-card-text>
+            <div>
+              <strong>Launch Site:</strong>
+              {{ launch.launch_site?.site_name_long || 'N/A' }}
+            </div>
+            <div>
+              <strong>Rocket:</strong>
+              {{ launch.rocket?.rocket_name || 'N/A' }}
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+
+    <!-- Dialog for launch details -->
+    <v-dialog v-model="dialog" max-width="500">
+      <v-card>
+        <v-card-title>
+          {{ selectedLaunch?.mission_name }}
+        </v-card-title>
+        <v-card-text>
+          <div>
+            <strong>Mission Name:</strong>
+            {{ selectedLaunch?.mission_name }}
+          </div>
+          <div>
+            <strong>Launch Date:</strong>
+            {{ formatDate(selectedLaunch?.launch_date_utc) }}
+          </div>
+          <div>
+            <strong>Launch Site:</strong>
+            {{ selectedLaunch?.launch_site?.site_name_long || 'N/A' }}
+          </div>
+          <div>
+            <strong>Rocket Name:</strong>
+            {{ selectedLaunch?.rocket?.rocket_name || 'N/A' }}
+          </div>
+          <div>
+            <strong>Details:</strong>
+            {{ selectedLaunch?.details || 'N/A' }}
+          </div>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn color="blue" text @click="dialog = false">Close</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Alert if no launches found -->
+    <v-alert v-if="!pending && sortedLaunches.length === 0" type="info" class="mt-4">
+      No launches found.
+    </v-alert>
+    <!-- Loading indicator -->
+    <v-progress-linear v-if="pending" indeterminate color="blue" class="mt-4" />
+  </v-container>
+</template>
+
+<script lang="ts" setup>
+// GraphQL query to fetch launches
+const query = gql`
+  query getLaunches {
+    launches {
+      id
+      mission_name
+      launch_date_utc
+      launch_site {
+        site_name_long
+      }
+      rocket {
+        rocket_name
+      }
+      details
+    }
+  }
+`
+// Fetch data using useAsyncQuery composable
+const { data, pending } = useAsyncQuery<{
+  launches: {
+    id: string
+    mission_name: string
+    launch_date_utc: string
+    launch_site?: { site_name_long: string }
+    rocket?: { rocket_name: string }
+    details?: string
+  }[]
+}>(query)
+
+// Computed property for launches
+const launches = computed(() => data.value?.launches ?? [])
+
+// Extract unique years from launches
+const years = computed(() => {
+  const yearSet = new Set<string>()
+  launches.value.forEach(l => {
+    if (l.launch_date_utc) {
+      yearSet.add(new Date(l.launch_date_utc).getFullYear().toString())
+    }
+  })
+  // Sort years descending and add "All" option
+  return [
+    { label: 'All Years', value: '' },
+    ...Array.from(yearSet).sort((a, b) => parseInt(b) - parseInt(a)).map(y => ({ label: y, value: y }))
+  ]
+})
+
+// Selected year for filtering
+const selectedYear = ref('')
+
+// Filter launches by selected year
+const filteredLaunches = computed(() => {
+  if (!selectedYear.value) return launches.value
+  return launches.value.filter(l => {
+    if (!l.launch_date_utc) return false
+    return new Date(l.launch_date_utc).getFullYear().toString() === selectedYear.value
+  })
+})
+
+// Sorting options
+const sortOptions = [
+  { label: 'Newest First', value: 'desc' },
+  { label: 'Oldest First', value: 'asc' }
+]
+const sortOrder = ref('desc')
+
+// Sort launches by launch date
+const sortedLaunches = computed(() => {
+  return [...filteredLaunches.value].sort((a, b) => {
+    const dateA = a.launch_date_utc ? new Date(a.launch_date_utc).getTime() : 0
+    const dateB = b.launch_date_utc ? new Date(b.launch_date_utc).getTime() : 0
+    return sortOrder.value === 'asc' ? dateA - dateB : dateB - dateA
+  })
+})
+
+// Dialog state and selected launch
+const dialog = ref(false)
+const selectedLaunch = ref<
+  | {
+      id: string
+      mission_name: string
+      launch_date_utc: string
+      launch_site?: { site_name_long: string }
+      rocket?: { rocket_name: string }
+      details?: string
+    }
+  | null
+>(null)
+
+// Function to select a launch and open dialog
+function selectLaunch(launch: typeof selectedLaunch.value) {
+  selectedLaunch.value = launch
+  dialog.value = true
+}
+
+// Helper function to format launch date
+function formatDate(dateStr?: string) {
+  if (!dateStr) return 'N/A'
+  const date = new Date(dateStr)
+  return date.toLocaleString()
+}
+</script>
+
+<style scoped>
+  h2{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+</style>

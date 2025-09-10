@@ -30,9 +30,9 @@
 			<v-chip color="blue">Card</v-chip>
 		</h3>
 		<v-card class="mx-auto my-12" max-width="374">
-			<template #progress>
+			<!-- <template #progress>
 				<v-progress-linear color="deep-purple" height="10" indeterminate />
-			</template>
+			</template> -->
 
 			<v-img height="250" src="https://cdn.vuetifyjs.com/images/cards/cooking.png" />
 
