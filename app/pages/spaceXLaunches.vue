@@ -12,7 +12,6 @@
           v-model="selectedYear"
           :items="years"
           label="Filter by Year"
-          clearable
           item-title="label"
           item-value="value"
         />
@@ -39,7 +38,7 @@
       >
         <!-- Card for each launch -->
         <v-card
-          class="mb-4"
+          class="mb-4 launch-card"
           @click="selectLaunch(launch)"
           hover
           elevation="3"
@@ -217,5 +216,14 @@ function formatDate(dateStr?: string) {
     align-items: center;
     gap: 8px;
     margin-bottom: 16px;
+  }
+  .launch-card {
+    transition: transform 0.2s;
+    &:hover {
+      transform: translateY(-5px);  
+      background-color: black;
+      color: white;
+      transition: background-color 0.5s, color 0.5s, transform 0.5s;
+    }    
   }
 </style>
