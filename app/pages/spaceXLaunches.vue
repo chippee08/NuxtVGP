@@ -122,10 +122,27 @@
 
 <!-- ts code -->
 <script lang="ts" setup>
-
 import { ref, computed } from 'vue'
 import { useFavoritesStore } from '~/stores/favorites'
 const favorites = useFavoritesStore()
+
+// Define the Launch type to fix the 'Cannot find name Launch' error
+type Launch = {
+  id: string
+  mission_name: string
+  launch_date_utc: string
+  launch_site?: { site_name_long: string }
+  rocket?: { 
+    rocket_name: string
+    rocket: {
+      id: string
+      name: string
+      description: string
+      first_flight: string
+    }
+  }
+  details?: string
+}
 
 const snackbar = ref({
   show: false,
@@ -138,7 +155,7 @@ function handleFavorite(launch: any) {
     snackbar.value = { show: true, message: 'Could not be added to favorites.', color: 'error' }
     return
   }
-  const result = favorites.addOrRemoveFavorite(launch.rocket.rocket)  
+  const result = favorites.addOrRemoveFavorite(launch.rocket.rocket)
   if (result === 'added') {
     snackbar.value = { show: true, message: 'Successfully added to favorites!', color: 'success' }
   } else if (result === 'removed') {
@@ -170,19 +187,11 @@ query getLaunches {
     details
   }
 }
-
 `
 
 // Fetch data using useAsyncQuery composable
 const { data, pending } = useAsyncQuery<{
-  launches: {
-    id: string
-    mission_name: string
-    launch_date_utc: string
-    launch_site?: { site_name_long: string }
-    rocket?: { rocket_name: string }
-    details?: string
-  }[]
+  launches: Launch[]
 }>(query)
 
 // Computed property for launches
@@ -233,25 +242,7 @@ const sortedLaunches = computed(() => {
 
 // Dialog state and selected launch
 const dialog = ref(false)
-const selectedLaunch = ref<
-  | {
-      id: string
-      mission_name: string
-      launch_date_utc: string
-      launch_site?: { site_name_long: string }
-      rocket?: { 
-        rocket_name: string
-        rocket: {
-          id: string
-          name: string
-          description: string
-          first_flight: string
-        }
-      }
-      details?: string
-    }
-  | null
->(null)
+const selectedLaunch = ref<Launch | null>(null)
 
 // Function to select a launch and open dialog
 function selectLaunch(launch: Launch) {

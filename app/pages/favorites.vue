@@ -12,8 +12,7 @@
         sm="6"
         md="4"
       >
-        <v-card class="mb-4">
-          <v-img :src="rocket.flickr_images?.[0]" height="200" cover />
+        <v-card class="mb-4 mt-4" height="300">
           <v-card-title>{{ rocket.name }}</v-card-title>
           <v-card-text>
             <div><strong>Description:</strong> {{ rocket.description }}</div>
