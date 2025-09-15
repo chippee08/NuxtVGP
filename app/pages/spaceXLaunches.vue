@@ -63,12 +63,22 @@
     </v-row>
 
     <!-- Dialog for launch details -->
-    <v-dialog v-model="dialog" max-width="500">
-      <v-card>
-        <v-card-title>
-          {{ selectedLaunch?.mission_name }}
-        </v-card-title>
-        <v-card-text>
+     <v-dialog v-model="dialog" max-width="500">
+    <v-card>
+      <v-card-title>
+        {{ selectedLaunch?.mission_name }}
+        <v-spacer />
+        <v-btn
+          color="black"
+          text
+          :disabled="!selectedLaunch"
+          @click="handleFavorite(selectedLaunch)"
+        >
+          <v-icon :icon="selectedLaunch && favorites.isFavorite(selectedLaunch.id) ? 'mdi-bookmark-remove' : 'mdi-bookmark-plus'" class="mr-1" />
+          {{ selectedLaunch && favorites.isFavorite(selectedLaunch.id) ? 'Remove from Favorites' : 'Add to Favorites' }}
+        </v-btn>
+      </v-card-title>
+      <v-card-text>
           <div>
             <strong>Mission Name:</strong>
             {{ selectedLaunch?.mission_name }}
@@ -89,14 +99,17 @@
             <strong>Details:</strong>
             {{ selectedLaunch?.details || 'N/A' }}
           </div>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn color="blue" text @click="dialog = false">Close</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
+       </v-card-text>
+      <v-card-actions>
+        <v-spacer />
+        <v-btn color="blue" text @click="dialog = false">Close</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+  <!-- Snackbar for confirmation -->
+  <v-snackbar v-model="snackbar.show" :color="snackbar.color" timeout="2000">
+    {{ snackbar.message }}
+  </v-snackbar>
     <!-- Alert if no launches found -->
     <v-alert v-if="!pending && sortedLaunches.length === 0" type="info" class="mt-4">
       No launches found.
@@ -106,24 +119,60 @@
   </v-container>
 </template>
 
+
+<!-- ts code -->
 <script lang="ts" setup>
+
+import { ref, computed } from 'vue'
+import { useFavoritesStore } from '~/stores/favorites'
+const favorites = useFavoritesStore()
+
+const snackbar = ref({
+  show: false,
+  message: '',
+  color: 'success'
+})
+
+function handleFavorite(rocket: any) {
+  if (!rocket || !rocket.id) {
+    snackbar.value = { show: true, message: 'Could not be added to favorites.', color: 'error' }
+    return
+  }
+  const result = favorites.addOrRemoveFavorite(launch.rocket.rocket)  
+  if (result === 'added') {
+    snackbar.value = { show: true, message: 'Successfully added to favorites!', color: 'success' }
+  } else if (result === 'removed') {
+    snackbar.value = { show: true, message: 'Removed from favorites.', color: 'info' }
+  } else {
+    snackbar.value = { show: true, message: 'Could not be added to favorites.', color: 'error' }
+  }
+}
+
 // GraphQL query to fetch launches
 const query = gql`
-  query getLaunches {
-    launches {
-      id
-      mission_name
-      launch_date_utc
-      launch_site {
-        site_name_long
-      }
-      rocket {
-        rocket_name
-      }
-      details
+query getLaunches {
+  launches {
+    id
+    mission_name
+    launch_date_utc
+    launch_site {
+      site_name_long
     }
+    rocket {
+      rocket_name
+      rocket {
+        id
+        name
+        description
+        first_flight
+      }
+    }
+    details
   }
+}
+
 `
+
 // Fetch data using useAsyncQuery composable
 const { data, pending } = useAsyncQuery<{
   launches: {
@@ -216,7 +265,7 @@ function formatDate(dateStr?: string) {
     align-items: center;
     gap: 8px;
     margin-bottom: 16px;
-  }
+  } 
   .launch-card {
     transition: transform 0.2s;
     &:hover {
