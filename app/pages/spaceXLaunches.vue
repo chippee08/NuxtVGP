@@ -74,8 +74,8 @@
           :disabled="!selectedLaunch"
           @click="handleFavorite(selectedLaunch)"
         >
-          <v-icon :icon="selectedLaunch && favorites.isFavorite(selectedLaunch.id) ? 'mdi-bookmark-remove' : 'mdi-bookmark-plus'" class="mr-1" />
-          {{ selectedLaunch && favorites.isFavorite(selectedLaunch.id) ? 'Remove from Favorites' : 'Add to Favorites' }}
+          <v-icon :icon="selectedLaunch && selectedLaunch.rocket?.rocket && favorites.isFavorite(selectedLaunch.rocket.rocket.id) ? 'mdi-bookmark-remove' : 'mdi-bookmark-plus'" class="mr-1" />
+          {{ selectedLaunch && selectedLaunch.rocket?.rocket && favorites.isFavorite(selectedLaunch.rocket.rocket.id) ? 'Remove from Favorites' : 'Add to Favorites' }}
         </v-btn>
       </v-card-title>
       <v-card-text>
@@ -133,8 +133,8 @@ const snackbar = ref({
   color: 'success'
 })
 
-function handleFavorite(rocket: any) {
-  if (!rocket || !rocket.id) {
+function handleFavorite(launch: any) {
+  if (!launch || !launch.rocket?.rocket) {
     snackbar.value = { show: true, message: 'Could not be added to favorites.', color: 'error' }
     return
   }
@@ -148,7 +148,7 @@ function handleFavorite(rocket: any) {
   }
 }
 
-// GraphQL query to fetch launches
+// GraphQL query to fetch launches - USING YOUR ORIGINAL WORKING QUERY
 const query = gql`
 query getLaunches {
   launches {
@@ -239,14 +239,22 @@ const selectedLaunch = ref<
       mission_name: string
       launch_date_utc: string
       launch_site?: { site_name_long: string }
-      rocket?: { rocket_name: string }
+      rocket?: { 
+        rocket_name: string
+        rocket: {
+          id: string
+          name: string
+          description: string
+          first_flight: string
+        }
+      }
       details?: string
     }
   | null
 >(null)
 
 // Function to select a launch and open dialog
-function selectLaunch(launch: typeof selectedLaunch.value) {
+function selectLaunch(launch: Launch) {
   selectedLaunch.value = launch
   dialog.value = true
 }
